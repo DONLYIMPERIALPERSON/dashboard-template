@@ -2,8 +2,13 @@
 import React from "react";
 import Badge from "../ui/badge/Badge";
 import { ArrowDownIcon, ArrowUpIcon, BoxCubeIcon, CheckCircleIcon } from "@/icons";
+import { DashboardSummary } from "@/lib/api";
 
-export const SummaryMetrics = () => {
+interface SummaryMetricsProps {
+  dashboardData: DashboardSummary | null;
+}
+
+export const SummaryMetrics: React.FC<SummaryMetricsProps> = ({ dashboardData }) => {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6">
       {/* <!-- Available Balance --> */}
@@ -17,7 +22,7 @@ export const SummaryMetrics = () => {
             Available Balance
           </span>
           <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-            ₦2,500,000
+            ₦{dashboardData ? dashboardData.total_balance.toLocaleString() : '0'}
           </h4>
         </div>
       </div>
@@ -32,7 +37,7 @@ export const SummaryMetrics = () => {
             Credits Today
           </span>
           <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-            ₦1,250,000
+            ₦{dashboardData ? dashboardData.total_collections_today.toLocaleString() : '0'}
           </h4>
         </div>
       </div>
@@ -47,7 +52,7 @@ export const SummaryMetrics = () => {
             Debits Today
           </span>
           <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-            ₦750,000
+            ₦{dashboardData ? dashboardData.total_payouts_today.toLocaleString() : '0'}
           </h4>
         </div>
       </div>
@@ -63,7 +68,7 @@ export const SummaryMetrics = () => {
             Successful Transactions
           </span>
           <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-            247
+            {dashboardData ? dashboardData.total_transactions.toLocaleString() : '0'}
           </h4>
         </div>
       </div>

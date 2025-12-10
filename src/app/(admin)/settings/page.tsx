@@ -4,10 +4,8 @@ import { GridIcon, BellIcon, LockIcon, UserIcon, DollarLineIcon, BoxCubeIcon } f
 import GeneralSettings from "@/components/settings/GeneralSettings";
 import NotificationSettings from "@/components/settings/NotificationSettings";
 import SecuritySettings from "@/components/settings/SecuritySettings";
-import ApiKeysSettings from "@/components/settings/ApiKeysSettings";
 import ProfileSettings from "@/components/settings/ProfileSettings";
 import SettlementAccountSettings from "@/components/settings/SettlementAccountSettings";
-import FeesSettings from "@/components/settings/FeesSettings";
 import TeamsSettings from "@/components/settings/TeamsSettings";
 
 export default function SettingsPage() {
@@ -18,10 +16,8 @@ export default function SettingsPage() {
     { id: "notifications", label: "Notifications", icon: BellIcon },
     { id: "security", label: "Security", icon: LockIcon },
     { id: "teams", label: "Teams", icon: UserIcon },
-    { id: "api-keys", label: "API Keys & Webhooks", icon: UserIcon },
     { id: "profile", label: "Profile", icon: UserIcon },
     { id: "settlement", label: "Settlement Account", icon: BoxCubeIcon },
-    { id: "fees", label: "Fees", icon: DollarLineIcon },
   ];
 
   return (
@@ -69,10 +65,8 @@ export default function SettingsPage() {
           {activeTab === "notifications" && <NotificationSettings />}
           {activeTab === "security" && <SecuritySettings />}
           {activeTab === "teams" && <TeamsSettings />}
-          {activeTab === "api-keys" && <ApiKeysSettings />}
           {activeTab === "profile" && <ProfileSettings />}
           {activeTab === "settlement" && <SettlementAccountSettings />}
-          {activeTab === "fees" && <FeesSettings />}
         </div>
       </div>
     </div>

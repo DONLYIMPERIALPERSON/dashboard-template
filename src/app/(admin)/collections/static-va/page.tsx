@@ -1,67 +1,55 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { GridIcon, BoxCubeIcon, UserCircleIcon } from "@/icons";
+import { collectionsApi } from "@/lib/api";
+
+interface StaticVA {
+  id: string;
+  account_number: string;
+  account_name: string;
+  bank_name: string;
+  balance: number;
+  status: string;
+  created_at: string;
+  total_collections: number;
+  transaction_count: number;
+}
 
 export default function StaticVAPage() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [staticVirtualAccounts, setStaticVirtualAccounts] = useState<StaticVA[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const staticVirtualAccounts = [
-    {
-      id: "VA_STATIC_001",
-      accountNumber: "1234567890",
-      accountName: "SafeHaven Business VA",
-      bankName: "GTBank",
-      balance: "150,000.00",
-      status: "active",
-      createdAt: "2024-01-15",
-      totalCollections: 250000.00,
-      transactionCount: 89,
-    },
-    {
-      id: "VA_STATIC_002",
-      accountNumber: "2345678901",
-      accountName: "Business Collection VA",
-      bankName: "First Bank",
-      balance: "85,500.00",
-      status: "active",
-      createdAt: "2024-02-20",
-      totalCollections: 175000.00,
-      transactionCount: 67,
-    },
-    {
-      id: "VA_STATIC_003",
-      accountNumber: "3456789012",
-      accountName: "Enterprise VA",
-      bankName: "Zenith Bank",
-      balance: "200,750.00",
-      status: "active",
-      createdAt: "2024-03-10",
-      totalCollections: 320000.00,
-      transactionCount: 124,
-    },
-    {
-      id: "VA_STATIC_004",
-      accountNumber: "4567890123",
-      accountName: "Legacy VA",
-      bankName: "Access Bank",
-      balance: "45,250.00",
-      status: "inactive",
-      createdAt: "2024-04-05",
-      totalCollections: 95000.00,
-      transactionCount: 38,
-    },
-    {
-      id: "VA_STATIC_005",
-      accountNumber: "5678901234",
-      accountName: "Premium VA",
-      bankName: "UBA",
-      balance: "300,000.00",
-      status: "active",
-      createdAt: "2024-05-12",
-      totalCollections: 450000.00,
-      transactionCount: 156,
-    },
-  ];
+  // Fetch static VA collections on component mount
+  useEffect(() => {
+    const fetchStaticVaCollections = async () => {
+      try {
+        setLoading(true);
+        const response = await collectionsApi.getStaticVaCollections();
+        // Map API response to our interface
+        const mappedAccounts: StaticVA[] = response.collections.map((collection: any) => ({
+          id: collection.id || collection.reference || 'N/A',
+          account_number: collection.account_number || 'N/A',
+          account_name: collection.account_name || 'N/A',
+          bank_name: collection.bank_name || 'N/A',
+          balance: collection.balance || 0,
+          status: collection.status || 'active',
+          created_at: collection.created_at || new Date().toISOString(),
+          total_collections: collection.total_collections || 0,
+          transaction_count: collection.transaction_count || 0,
+        }));
+        setStaticVirtualAccounts(mappedAccounts);
+      } catch (err) {
+        console.error("Failed to fetch static VA collections:", err);
+        setError(err instanceof Error ? err.message : "Failed to load static VA collections");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStaticVaCollections();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -86,11 +74,11 @@ export default function StaticVAPage() {
     alert("Account number copied to clipboard!");
   };
 
-  const totalActiveAccounts = staticVirtualAccounts.filter(account => account.status === "active").length;
+  const totalActiveAccounts = staticVirtualAccounts.filter((account: StaticVA) => account.status === "active").length;
   const totalBalance = staticVirtualAccounts
-    .filter(account => account.status === "active")
-    .reduce((sum, account) => sum + parseFloat(account.balance.replace(',', '')), 0);
-  const totalCollections = staticVirtualAccounts.reduce((sum, account) => sum + account.totalCollections, 0);
+    .filter((account: StaticVA) => account.status === "active")
+    .reduce((sum: number, account: StaticVA) => sum + account.balance, 0);
+  const totalCollections = staticVirtualAccounts.reduce((sum: number, account: StaticVA) => sum + account.total_collections, 0);
 
   return (
     <div>
@@ -187,14 +175,14 @@ export default function StaticVAPage() {
                           Account Number:
                         </span>
                         <button
-                          onClick={() => handleCopyAccount(account.accountNumber)}
+                          onClick={() => handleCopyAccount(account.account_number)}
                           className="text-xs text-teal-600 hover:text-teal-700 dark:text-teal-400"
                         >
                           Copy
                         </button>
                       </div>
                       <p className="font-mono text-lg text-gray-900 dark:text-white">
-                        {account.accountNumber}
+                        {account.account_number}
                       </p>
                     </div>
 
@@ -202,13 +190,13 @@ export default function StaticVAPage() {
                       <div className="p-3 bg-white dark:bg-gray-700 rounded border">
                         <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Account Name</p>
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {account.accountName}
+                          {account.account_name}
                         </p>
                       </div>
                       <div className="p-3 bg-white dark:bg-gray-700 rounded border">
                         <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Bank</p>
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {account.bankName}
+                          {account.bank_name}
                         </p>
                       </div>
                     </div>
@@ -219,20 +207,20 @@ export default function StaticVAPage() {
                     <div className="text-center p-3 bg-white dark:bg-gray-700 rounded border">
                       <p className="text-xs text-gray-600 dark:text-gray-400">Transactions</p>
                       <p className="text-lg font-bold text-gray-900 dark:text-white">
-                        {account.transactionCount}
+                        {account.transaction_count}
                       </p>
                     </div>
                     <div className="text-center p-3 bg-white dark:bg-gray-700 rounded border">
                       <p className="text-xs text-gray-600 dark:text-gray-400">Total Collected</p>
                       <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                        {formatCurrency(account.totalCollections)}
+                        {formatCurrency(account.total_collections)}
                       </p>
                     </div>
                   </div>
 
                   {/* Created Date */}
                   <div className="text-xs text-gray-500 dark:text-gray-400">
-                    Created: {new Date(account.createdAt).toLocaleDateString()}
+                    Created: {new Date(account.created_at).toLocaleDateString()}
                   </div>
                 </div>
               </div>

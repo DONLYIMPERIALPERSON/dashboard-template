@@ -1,72 +1,37 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { GridIcon, BoxCubeIcon, UserCircleIcon } from "@/icons";
+import { collectionsApi, CollectionTransaction } from "@/lib/api";
 
 export default function DynamicVAPage() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [collections, setCollections] = useState<CollectionTransaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCollections, setTotalCollections] = useState(0);
 
-  const recentCollections = [
-    {
-      id: "COL_VA_001",
-      type: "VA",
-      amount: 125000.00,
-      sender: "Corporate Client A",
-      senderAccount: "1234567890",
-      bankName: "GTBank",
-      reference: "VA_PAY_20241212_001",
-      status: "completed",
-      date: "2024-12-12T16:45:00Z",
-      description: "Invoice payment",
-    },
-    {
-      id: "COL_VA_002",
-      type: "VA",
-      amount: 85000.00,
-      sender: "Business Partner B",
-      senderAccount: "2345678901",
-      bankName: "First Bank",
-      reference: "VA_PAY_20241212_002",
-      status: "pending",
-      date: "2024-12-12T15:30:00Z",
-      description: "Service fee",
-    },
-    {
-      id: "COL_VA_003",
-      type: "VA",
-      amount: 200000.00,
-      sender: "Enterprise C",
-      senderAccount: "3456789012",
-      bankName: "Zenith Bank",
-      reference: "VA_PAY_20241212_003",
-      status: "completed",
-      date: "2024-12-12T14:20:00Z",
-      description: "Bulk payment",
-    },
-    {
-      id: "COL_VA_004",
-      type: "VA",
-      amount: 45000.00,
-      sender: "Startup D",
-      senderAccount: "4567890123",
-      bankName: "Access Bank",
-      reference: "VA_PAY_20241212_004",
-      status: "failed",
-      date: "2024-12-12T13:10:00Z",
-      description: "Product purchase",
-    },
-    {
-      id: "COL_VA_005",
-      type: "VA",
-      amount: 175000.00,
-      sender: "Client E",
-      senderAccount: "5678901234",
-      bankName: "UBA",
-      reference: "VA_PAY_20241211_005",
-      status: "completed",
-      date: "2024-12-11T17:00:00Z",
-      description: "Consultation fee",
-    },
-  ];
+  // Fetch VA collections on component mount
+  useEffect(() => {
+    const fetchVaCollections = async () => {
+      try {
+        setLoading(true);
+        const response = await collectionsApi.getVaCollections({
+          page: currentPage,
+          limit: 20,
+        });
+        setCollections(response.collections);
+        setTotalCollections(response.total);
+      } catch (err) {
+        console.error("Failed to fetch VA collections:", err);
+        setError(err instanceof Error ? err.message : "Failed to load collections");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVaCollections();
+  }, [currentPage]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -98,12 +63,12 @@ export default function DynamicVAPage() {
     });
   };
 
-  const totalCollectedToday = recentCollections
-    .filter(col => col.status === "completed" &&
-      new Date(col.date).toDateString() === new Date().toDateString())
-    .reduce((sum, col) => sum + col.amount, 0);
+  const totalCollectedToday = collections
+    .filter((col: CollectionTransaction) => col.status === "completed" &&
+      new Date(col.created_at).toDateString() === new Date().toDateString())
+    .reduce((sum: number, col: CollectionTransaction) => sum + col.amount, 0);
 
-  const pendingCollections = recentCollections.filter(col => col.status === "pending").length;
+  const pendingCollections = collections.filter((col: CollectionTransaction) => col.status === "pending").length;
 
   return (
     <div>
@@ -166,7 +131,7 @@ export default function DynamicVAPage() {
                     Total Transactions
                   </p>
                   <p className="text-2xl font-bold text-blue-800 dark:text-blue-200 mt-1">
-                    {recentCollections.length}
+                    {collections.length}
                   </p>
                 </div>
                 <div className="p-3 bg-blue-200 dark:bg-blue-800 rounded-full">
@@ -213,7 +178,7 @@ export default function DynamicVAPage() {
                 </tr>
               </thead>
               <tbody>
-                {recentCollections.map((collection) => (
+                {collections.map((collection: CollectionTransaction) => (
                   <tr
                     key={collection.id}
                     className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50"
@@ -227,23 +192,23 @@ export default function DynamicVAPage() {
                           {collection.reference}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {collection.description}
+                          {collection.description || 'N/A'}
                         </p>
                       </div>
                     </td>
                     <td className="py-4 px-4">
                       <div>
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {collection.sender}
+                          {collection.customer_name || 'N/A'}
                         </p>
                         <p className="font-mono text-xs text-gray-500 dark:text-gray-400">
-                          {collection.senderAccount}
+                          {collection.customer_email || 'N/A'}
                         </p>
                       </div>
                     </td>
                     <td className="py-4 px-4">
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {collection.bankName}
+                        N/A
                       </span>
                     </td>
                     <td className="py-4 px-4">
@@ -263,7 +228,7 @@ export default function DynamicVAPage() {
                     </td>
                     <td className="py-4 px-4">
                       <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {formatDate(collection.date)}
+                        {formatDate(collection.created_at)}
                       </span>
                     </td>
                   </tr>
@@ -275,7 +240,7 @@ export default function DynamicVAPage() {
           {/* Pagination */}
           <div className="flex items-center justify-between mt-6">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Showing {recentCollections.length} collections
+              Showing {collections.length} collections
             </p>
             <div className="flex gap-2">
               <button className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700">

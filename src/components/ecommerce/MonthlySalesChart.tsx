@@ -6,17 +6,26 @@ import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { useState } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import ChartTab from "../common/ChartTab";
+import { DashboardSummary } from "@/lib/api";
 
 // Dynamically import the ReactApexChart component
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
 });
 
-export default function MonthlySalesChart() {
+interface MonthlySalesChartProps {
+  dashboardData: DashboardSummary | null;
+}
+
+export default function MonthlySalesChart({ dashboardData }: MonthlySalesChartProps) {
+  // Prepare chart data from API
   const chartData = {
     title: "Daily Collections",
-    categories: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-    data: [168000, 385000, 201000, 298000, 187000, 195000, 291000]
+    categories: dashboardData?.collections_trend?.map(item => {
+      const date = new Date(item.date);
+      return date.toLocaleDateString('en-US', { weekday: 'short' });
+    }) || ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    data: dashboardData?.collections_trend?.map(item => item.amount) || [0, 0, 0, 0, 0, 0, 0]
   };
 
   const options: ApexOptions = {

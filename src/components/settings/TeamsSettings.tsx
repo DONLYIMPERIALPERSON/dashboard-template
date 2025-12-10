@@ -1,6 +1,19 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UserIcon, MailIcon, PlusIcon, CheckCircleIcon, LockIcon } from "@/icons";
+import { settingsApi } from "@/lib/api";
+
+interface TeamMember {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  invited_at: string;
+  accepted_at: string | null;
+  is_active: boolean;
+  status: string;
+}
 
 export default function TeamsSettings() {
   const [showInviteForm, setShowInviteForm] = useState(false);
@@ -8,43 +21,129 @@ export default function TeamsSettings() {
   const [inviteFirstName, setInviteFirstName] = useState("");
   const [inviteLastName, setInviteLastName] = useState("");
   const [inviteRole, setInviteRole] = useState("support");
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  // Mock team data - in real app, this would come from API
-  const teamMembers = [
-    {
-      id: 1,
-      email: "john.doe@example.com",
-      firstName: "John",
-      lastName: "Doe",
-      role: "owner",
-      invitedAt: "2024-01-15T10:30:00Z",
-      acceptedAt: "2024-01-15T10:35:00Z",
-      isActive: true,
-      status: "active"
-    },
-    {
-      id: 2,
-      email: "jane.smith@example.com",
-      firstName: "Jane",
-      lastName: "Smith",
-      role: "admin",
-      invitedAt: "2024-01-20T14:20:00Z",
-      acceptedAt: "2024-01-20T14:25:00Z",
-      isActive: true,
-      status: "active"
-    },
-    {
-      id: 3,
-      email: "mike.johnson@example.com",
-      firstName: "Mike",
-      lastName: "Johnson",
-      role: "finance",
-      invitedAt: "2024-01-25T09:15:00Z",
-      acceptedAt: null,
-      isActive: true,
-      status: "pending"
+  // Fetch team members on component mount
+  useEffect(() => {
+    const fetchTeamMembers = async () => {
+      try {
+        setLoading(true);
+        // For now, we'll use default team members since the API may not have this endpoint yet
+        // In a full implementation, you'd have a dedicated team management endpoint
+        setTeamMembers([
+          {
+            id: "1",
+            email: "john.doe@example.com",
+            first_name: "John",
+            last_name: "Doe",
+            role: "owner",
+            invited_at: "2024-01-15T10:30:00Z",
+            accepted_at: "2024-01-15T10:35:00Z",
+            is_active: true,
+            status: "active"
+          },
+          {
+            id: "2",
+            email: "jane.smith@example.com",
+            first_name: "Jane",
+            last_name: "Smith",
+            role: "admin",
+            invited_at: "2024-01-20T14:20:00Z",
+            accepted_at: "2024-01-20T14:25:00Z",
+            is_active: true,
+            status: "active"
+          },
+          {
+            id: "3",
+            email: "mike.johnson@example.com",
+            first_name: "Mike",
+            last_name: "Johnson",
+            role: "finance",
+            invited_at: "2024-01-25T09:15:00Z",
+            accepted_at: null,
+            is_active: true,
+            status: "pending"
+          }
+        ]);
+      } catch (err) {
+        console.error("Failed to fetch team members:", err);
+        setError(err instanceof Error ? err.message : "Failed to load team members");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTeamMembers();
+  }, []);
+
+  const handleInviteMember = async () => {
+    if (!inviteEmail) {
+      alert("Please enter an email address");
+      return;
     }
-  ];
+
+    try {
+      setSaving(true);
+      setError(null);
+      // For now, we'll simulate inviting a team member
+      // In a full implementation, you'd call settingsApi.inviteTeamMember(...)
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+
+      // Add the new member to the list (simulated)
+      const newMember: TeamMember = {
+        id: Date.now().toString(),
+        email: inviteEmail,
+        first_name: inviteFirstName || "New",
+        last_name: inviteLastName || "Member",
+        role: inviteRole,
+        invited_at: new Date().toISOString(),
+        accepted_at: null,
+        is_active: true,
+        status: "pending"
+      };
+      setTeamMembers(prev => [...prev, newMember]);
+
+      setShowInviteForm(false);
+      setInviteEmail("");
+      setInviteFirstName("");
+      setInviteLastName("");
+      setInviteRole("support");
+    } catch (err) {
+      console.error("Failed to invite team member:", err);
+      setError(err instanceof Error ? err.message : "Failed to invite team member");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading team members...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error && teamMembers.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">⚠️ Error loading team members</div>
+          <p className="text-gray-600 dark:text-gray-400">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   const roles = [
     {
@@ -68,31 +167,6 @@ export default function TeamsSettings() {
       description: "Manage KYC, API keys, wallets, payments, webhooks, invite team"
     }
   ];
-
-  const handleInviteMember = async () => {
-    if (!inviteEmail) {
-      alert("Please enter an email address");
-      return;
-    }
-
-    // In real app, this would call the API
-    console.log("Inviting team member:", {
-      email: inviteEmail,
-      firstName: inviteFirstName,
-      lastName: inviteLastName,
-      role: inviteRole
-    });
-
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    alert(`Invitation sent to ${inviteEmail}`);
-    setShowInviteForm(false);
-    setInviteEmail("");
-    setInviteFirstName("");
-    setInviteLastName("");
-    setInviteRole("support");
-  };
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
@@ -188,7 +262,7 @@ export default function TeamsSettings() {
                 </div>
                 <div>
                   <h5 className="font-medium text-gray-900 dark:text-white">
-                    {member.firstName} {member.lastName}
+                    {member.first_name} {member.last_name}
                   </h5>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     {member.email}
@@ -211,9 +285,9 @@ export default function TeamsSettings() {
               </div>
             </div>
             <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-              Invited: {new Date(member.invitedAt).toLocaleDateString()}
-              {member.acceptedAt && (
-                <> • Joined: {new Date(member.acceptedAt).toLocaleDateString()}</>
+              Invited: {new Date(member.invited_at).toLocaleDateString()}
+              {member.accepted_at && (
+                <> • Joined: {new Date(member.accepted_at).toLocaleDateString()}</>
               )}
             </div>
           </div>

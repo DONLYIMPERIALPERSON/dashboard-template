@@ -1,156 +1,102 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ListIcon, EyeIcon, CheckCircleIcon } from "@/icons";
+import { collectionsApi } from "@/lib/api";
+
+interface Transaction {
+  id: string;
+  type: string;
+  method: string;
+  amount: number;
+  currency: string;
+  customer: string;
+  reference: string;
+  description: string;
+  status: string;
+  timestamp: string;
+  fees: number;
+  netAmount: number;
+}
 
 export default function TransactionsPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock comprehensive transaction data
-  const transactions = [
-    {
-      id: "TXN_001",
-      type: "collection",
-      method: "Dynamic TRX",
-      amount: 50000,
-      currency: "NGN",
-      customer: "John Customer",
-      reference: "COL_DTX_001",
-      description: "Payment for Product Purchase",
-      status: "completed",
-      timestamp: "2024-12-12T16:45:23Z",
-      fees: 500,
-      netAmount: 49500
-    },
-    {
-      id: "TXN_002",
-      type: "disbursement",
-      method: "Bank Transfer",
-      amount: 150000,
-      currency: "NGN",
-      customer: "Vendor ABC Ltd",
-      reference: "DIS_001",
-      description: "Invoice payment - INV-2024-001",
-      status: "completed",
-      timestamp: "2024-12-12T15:30:15Z",
-      fees: 1500,
-      netAmount: 148500
-    },
-    {
-      id: "TXN_003",
-      type: "checkout_link",
-      method: "Checkout Link",
-      amount: 25000,
-      currency: "NGN",
-      customer: "Jane Doe",
-      reference: "CHK_001",
-      description: "Subscription payment - Monthly Plan",
-      status: "completed",
-      timestamp: "2024-12-12T14:22:45Z",
-      fees: 250,
-      netAmount: 24750
-    },
-    {
-      id: "TXN_004",
-      type: "collection",
-      method: "Static USDT",
-      amount: 1000,
-      currency: "USDT",
-      customer: "Crypto User",
-      reference: "COL_USDT_001",
-      description: "USDT deposit for services",
-      status: "completed",
-      timestamp: "2024-12-12T13:15:30Z",
-      fees: 10,
-      netAmount: 990
-    },
-    {
-      id: "TXN_005",
-      type: "payout",
-      method: "Bank Transfer",
-      amount: 75000,
-      currency: "NGN",
-      customer: "Freelancer XYZ",
-      reference: "PO_001",
-      description: "Freelance payment - Project completion",
-      status: "pending",
-      timestamp: "2024-12-12T12:45:12Z",
-      fees: 750,
-      netAmount: 74250
-    },
-    {
-      id: "TXN_006",
-      type: "collection",
-      method: "Dynamic VA",
-      amount: 200000,
-      currency: "NGN",
-      customer: "Corporate Client",
-      reference: "COL_DVA_001",
-      description: "Bulk payment processing",
-      status: "completed",
-      timestamp: "2024-12-12T11:30:45Z",
-      fees: 2000,
-      netAmount: 198000
-    },
-    {
-      id: "TXN_007",
-      type: "disbursement",
-      method: "Bank Transfer",
-      amount: 50000,
-      currency: "NGN",
-      customer: "Supplier DEF",
-      reference: "DIS_002",
-      description: "Raw materials payment",
-      status: "failed",
-      timestamp: "2024-12-12T10:20:33Z",
-      fees: 500,
-      netAmount: 49500
-    },
-    {
-      id: "TXN_008",
-      type: "collection",
-      method: "Static VA",
-      amount: 125000,
-      currency: "NGN",
-      customer: "Regular Client",
-      reference: "COL_SVA_001",
-      description: "Monthly service fee",
-      status: "completed",
-      timestamp: "2024-12-12T09:15:22Z",
-      fees: 1250,
-      netAmount: 123750
-    },
-    {
-      id: "TXN_009",
-      type: "checkout_link",
-      method: "Checkout Link",
-      amount: 50000,
-      currency: "NGN",
-      customer: "New Customer",
-      reference: "CHK_002",
-      description: "One-time service payment",
-      status: "pending",
-      timestamp: "2024-12-11T16:45:10Z",
-      fees: 500,
-      netAmount: 49500
-    },
-    {
-      id: "TXN_010",
-      type: "payout",
-      method: "Bank Transfer",
-      amount: 300000,
-      currency: "NGN",
-      customer: "Partner Company",
-      reference: "PO_002",
-      description: "Partnership commission payout",
-      status: "completed",
-      timestamp: "2024-12-11T14:30:55Z",
-      fees: 3000,
-      netAmount: 297000
-    }
-  ];
+  // Fetch transactions on component mount
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        setLoading(true);
+        // Combine data from different APIs to create unified transaction view
+        // This is a simplified approach - in production you'd have a dedicated transactions API
+        const [trxResponse, vaResponse, usdtResponse] = await Promise.all([
+          collectionsApi.getTrxCollections({ page: 1, limit: 10 }),
+          collectionsApi.getVaCollections({ page: 1, limit: 10 }),
+          collectionsApi.getUsdtCollections()
+        ]);
+
+        // Map and combine all transactions
+        const allTransactions: Transaction[] = [
+          ...trxResponse.collections.slice(0, 3).map((t: any) => ({
+            id: t.id || 'N/A',
+            type: 'collection',
+            method: 'Dynamic TRX',
+            amount: t.amount || 0,
+            currency: 'NGN',
+            customer: t.customer_name || 'N/A',
+            reference: t.reference || 'N/A',
+            description: t.description || 'TRX Collection',
+            status: t.status || 'completed',
+            timestamp: t.created_at || new Date().toISOString(),
+            fees: Math.round((t.amount || 0) * 0.01), // 1% fee
+            netAmount: (t.amount || 0) - Math.round((t.amount || 0) * 0.01)
+          })),
+          ...vaResponse.collections.slice(0, 3).map((t: any) => ({
+            id: t.id || 'N/A',
+            type: 'collection',
+            method: 'Dynamic VA',
+            amount: t.amount || 0,
+            currency: 'NGN',
+            customer: t.customer_name || 'N/A',
+            reference: t.reference || 'N/A',
+            description: t.description || 'VA Collection',
+            status: t.status || 'completed',
+            timestamp: t.created_at || new Date().toISOString(),
+            fees: Math.round((t.amount || 0) * 0.01),
+            netAmount: (t.amount || 0) - Math.round((t.amount || 0) * 0.01)
+          })),
+          ...usdtResponse.collections.slice(0, 2).map((t: any) => ({
+            id: t.id || 'N/A',
+            type: 'collection',
+            method: 'Static USDT',
+            amount: t.balance || 0,
+            currency: 'USDT',
+            customer: t.customer_name || 'Crypto User',
+            reference: t.reference || 'N/A',
+            description: t.description || 'USDT Deposit',
+            status: t.status || 'completed',
+            timestamp: t.created_at || new Date().toISOString(),
+            fees: (t.balance || 0) * 0.01, // 1% fee
+            netAmount: (t.balance || 0) * 0.99
+          }))
+        ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+        setTransactions(allTransactions);
+      } catch (err) {
+        console.error("Failed to fetch transactions:", err);
+        setError(err instanceof Error ? err.message : "Failed to load transactions");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, []);
 
   const transactionTypes = [
     { value: "all", label: "All Types" },

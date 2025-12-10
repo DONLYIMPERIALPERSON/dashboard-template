@@ -2,22 +2,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import React, { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function SignInForm() {
   const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showPasskeySetup, setShowPasskeySetup] = useState(false);
-  const [isSettingUpPasskey, setIsSettingUpPasskey] = useState(false);
-
-  const handlePasskeyRegistration = async () => {
-    setError("🔄 Redirecting to complete passkey setup...");
-
-    // For existing users, redirect to signup flow which can handle passkey registration
-    setTimeout(() => {
-      window.location.href = "/signup";
-    }, 1000);
-  };
+  const { login, isLoading } = useAuth();
 
   const handleContinue = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,95 +17,18 @@ export default function SignInForm() {
       return;
     }
 
-    setIsLoading(true);
     setError(null);
 
     try {
-      // First, try passkey authentication
-      try {
-        // Initialize passkey authentication with backend
-        const initResponse = await fetch('https://api.oyapasteaza.com/api/v1/auth/login/init', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: email
-          }),
-        });
-
-        if (!initResponse.ok) {
-          const errorData = await initResponse.json();
-          throw new Error(errorData.detail || 'Failed to initialize authentication');
-        }
-
-        const initData = await initResponse.json();
-
-        // Get passkey credential from browser
-        const credential = await navigator.credentials.get({
-          publicKey: {
-            challenge: Uint8Array.from(atob(initData.authentication_options.challenge), (c: string) => c.charCodeAt(0)),
-            allowCredentials: initData.authentication_options.allowCredentials.map((cred: any) => ({
-              type: cred.type,
-              id: Uint8Array.from(atob(cred.id), (c: string) => c.charCodeAt(0)),
-            })),
-            userVerification: initData.authentication_options.userVerification,
-            timeout: initData.authentication_options.timeout,
-          },
-        }) as PublicKeyCredential;
-
-        if (credential) {
-          // Complete authentication with backend
-          const completeResponse = await fetch('https://api.oyapasteaza.com/api/v1/auth/login/complete', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              user_id: email,
-              credential: {
-                id: credential.id,
-                rawId: Array.from(new Uint8Array(credential.rawId)),
-                type: credential.type,
-                response: {
-                  clientDataJSON: Array.from(new Uint8Array(credential.response.clientDataJSON)),
-                  authenticatorData: Array.from(new Uint8Array((credential.response as AuthenticatorAssertionResponse).authenticatorData)),
-                  signature: Array.from(new Uint8Array((credential.response as AuthenticatorAssertionResponse).signature)),
-                  userHandle: (credential.response as AuthenticatorAssertionResponse).userHandle ? Array.from(new Uint8Array((credential.response as AuthenticatorAssertionResponse).userHandle!)) : null,
-                },
-              },
-            }),
-          });
-
-          if (!completeResponse.ok) {
-            const errorData = await completeResponse.json();
-            throw new Error(errorData.detail || 'Authentication failed');
-          }
-
-          const result = await completeResponse.json();
-
-          // Success - redirect to dashboard
-          console.log("Authentication successful:", result);
-          window.location.href = "/";
-          return;
-        }
-      } catch (passkeyError) {
-        console.log("Passkey authentication failed or not available:", passkeyError);
-        // Continue to alternative login method
-      }
-
-      // If passkey fails, require passkey registration
-      setShowPasskeySetup(true);
-      setError("🔐 Passkey authentication is required. Please register a passkey to access your account.");
+      await login(email);
+      // Redirect happens automatically in the auth context on success
     } catch (err) {
       console.error("Authentication failed:", err);
       if (err instanceof DOMException && err.name === "NotAllowedError") {
-        setError("Authentication was cancelled or no passkey found.");
+        setError("Authentication was cancelled or no passkey found. Please register a passkey first.");
       } else {
         setError(err instanceof Error ? err.message : "Failed to authenticate. Please try again.");
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -157,52 +70,23 @@ export default function SignInForm() {
             />
           </div>
 
-          {!showPasskeySetup && (
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="flex items-center justify-center w-full gap-3 px-6 py-3 text-base font-medium text-white transition-all rounded-3xl bg-[#26A69A] shadow-lg hover:bg-[#26A69A]/90 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xl"
-            >
-              {isLoading ? (
-                <>
-                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Authenticating...
-                </>
-              ) : (
-                "Continue"
-              )}
-            </button>
-          )}
-
-          {showPasskeySetup && (
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={handlePasskeyRegistration}
-                disabled={isSettingUpPasskey}
-                className="flex items-center justify-center w-full gap-3 px-6 py-3 text-base font-medium text-white transition-all rounded-3xl bg-[#26A69A] shadow-lg hover:bg-[#26A69A]/90 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xl"
-              >
-                {isSettingUpPasskey ? (
-                  <>
-                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Setting up Passkey...
-                  </>
-                ) : (
-                  <>
-                    🔐 Register Passkey
-                  </>
-                )}
-              </button>
-
-
-            </div>
-          )}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="flex items-center justify-center w-full gap-3 px-6 py-3 text-base font-medium text-white transition-all rounded-3xl bg-[#26A69A] shadow-lg hover:bg-[#26A69A]/90 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xl"
+          >
+            {isLoading ? (
+              <>
+                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Authenticating...
+              </>
+            ) : (
+              "Continue"
+            )}
+          </button>
 
         </form>
 

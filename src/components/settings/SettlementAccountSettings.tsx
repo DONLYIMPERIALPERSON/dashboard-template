@@ -1,29 +1,96 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { settingsApi } from "@/lib/api";
+
+interface SettlementAccount {
+  bank_name: string;
+  account_number: string;
+  account_name: string;
+  status: string;
+}
+
+interface SettlementRequest {
+  id: string;
+  bank_name: string;
+  account_number: string;
+  account_name: string;
+  status: string;
+  requested_at: string;
+}
 
 export default function SettlementAccountSettings() {
-  const [settlementAccount, setSettlementAccount] = useState({
-    bankName: "First Bank PLC",
-    accountNumber: "1234567890",
-    accountName: "ABC Corporation Ltd",
-    status: "approved",
-  });
+  const [settlementAccount, setSettlementAccount] = useState<SettlementAccount | null>(null);
+  const [settlementRequests, setSettlementRequests] = useState<SettlementRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const [newAccountRequest, setNewAccountRequest] = useState({
     bankCode: "",
     accountNumber: "",
   });
 
-  const [requests, setRequests] = useState([
-    {
-      id: "SETTLEMENT_ABC123",
-      bankName: "GTBank PLC",
-      accountNumber: "0987654321",
-      accountName: "ABC Corporation Ltd",
-      status: "pending",
-      requestedAt: "2024-12-12T10:30:00Z",
-    },
-  ]);
+  // Fetch settlement account data on component mount
+  useEffect(() => {
+    const fetchSettlementData = async () => {
+      try {
+        setLoading(true);
+        const settlementData = await settingsApi.getSettlementSettings();
+        setSettlementAccount({
+          bank_name: settlementData.bank_name || 'First Bank PLC',
+          account_number: settlementData.account_number || '1234567890',
+          account_name: settlementData.account_name || 'ABC Corporation Ltd',
+          status: 'approved' // For demo purposes, assume it's approved
+        });
+
+        // For now, we'll initialize with empty requests
+        // In a full implementation, you'd have a separate endpoint for settlement requests
+        setSettlementRequests([]);
+
+      } catch (err) {
+        console.error("Failed to fetch settlement data:", err);
+        setError(err instanceof Error ? err.message : "Failed to load settlement data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSettlementData();
+  }, []);
+
+  const handleRequestNewAccount = async () => {
+    if (!newAccountRequest.bankCode || !newAccountRequest.accountNumber) return;
+
+    try {
+      setSaving(true);
+      setError(null);
+      await settingsApi.updateSettlementSettings({
+        bank_code: newAccountRequest.bankCode,
+        account_number: newAccountRequest.accountNumber
+      });
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+
+      // Reset form
+      setNewAccountRequest({ bankCode: "", accountNumber: "" });
+
+      // Refresh data
+      const settlementData = await settingsApi.getSettlementSettings();
+      setSettlementAccount({
+        bank_name: settlementData.bank_name || 'First Bank PLC',
+        account_number: settlementData.account_number || '1234567890',
+        account_name: settlementData.account_name || 'ABC Corporation Ltd',
+        status: 'approved'
+      });
+
+    } catch (err) {
+      console.error("Failed to request settlement account:", err);
+      setError(err instanceof Error ? err.message : "Failed to request settlement account");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -45,13 +112,13 @@ export default function SettlementAccountSettings() {
                   </h5>
                   <div className="mt-2 space-y-1">
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      <span className="font-medium">Bank:</span> {settlementAccount.bankName}
+                      <span className="font-medium">Bank:</span> {settlementAccount?.bank_name || 'N/A'}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      <span className="font-medium">Account:</span> {settlementAccount.accountNumber}
+                      <span className="font-medium">Account:</span> {settlementAccount?.account_number || 'N/A'}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      <span className="font-medium">Name:</span> {settlementAccount.accountName}
+                      <span className="font-medium">Name:</span> {settlementAccount?.account_name || 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -125,11 +192,11 @@ export default function SettlementAccountSettings() {
         </div>
 
         {/* Pending Requests */}
-        {requests.length > 0 && (
+        {settlementRequests.length > 0 && (
           <div className="space-y-4">
             <h4 className="font-medium text-gray-900 dark:text-white">Pending Requests</h4>
 
-            {requests.map((request) => (
+            {settlementRequests.map((request: SettlementRequest) => (
               <div
                 key={request.id}
                 className="p-4 border border-yellow-200 bg-yellow-50 rounded-lg dark:border-yellow-800 dark:bg-yellow-900/20"
@@ -144,14 +211,14 @@ export default function SettlementAccountSettings() {
                         <span className="font-medium">ID:</span> {request.id}
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        <span className="font-medium">Bank:</span> {request.bankName}
+                        <span className="font-medium">Bank:</span> {request.bank_name}
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        <span className="font-medium">Account:</span> {request.accountNumber}
+                        <span className="font-medium">Account:</span> {request.account_number}
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
                         <span className="font-medium">Requested:</span>{" "}
-                        {new Date(request.requestedAt).toLocaleDateString()}
+                        {new Date(request.requested_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>

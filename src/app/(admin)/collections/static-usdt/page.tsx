@@ -1,52 +1,53 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { GridIcon, BoxCubeIcon, UserCircleIcon } from "@/icons";
+import { collectionsApi } from "@/lib/api";
+
+interface UsdtWallet {
+  id: string;
+  address: string;
+  network: string;
+  balance: number;
+  status: string;
+  created_at: string;
+  total_collections: number;
+  transaction_count: number;
+}
 
 export default function StaticUSDTPage() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [usdtWallets, setUsdtWallets] = useState<UsdtWallet[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const staticUSDTWallets = [
-    {
-      id: "USDT_STATIC_001",
-      address: "T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuW2X",
-      network: "TRC20",
-      balance: "2,450.00",
-      status: "active",
-      createdAt: "2024-01-15",
-      totalCollections: 125000.00,
-      transactionCount: 45,
-    },
-    {
-      id: "USDT_STATIC_002",
-      address: "TJAbCdEfGhIjKlMnOpQrStUvWxYzAbCdE",
-      network: "TRC20",
-      balance: "1,890.50",
-      status: "active",
-      createdAt: "2024-02-20",
-      totalCollections: 89000.00,
-      transactionCount: 32,
-    },
-    {
-      id: "USDT_STATIC_003",
-      address: "TKLmNoPqRsTuVwXyZaBcDeFgHiJkLmN",
-      network: "TRC20",
-      balance: "3,200.75",
-      status: "active",
-      createdAt: "2024-03-10",
-      totalCollections: 157000.00,
-      transactionCount: 67,
-    },
-    {
-      id: "USDT_STATIC_004",
-      address: "TMnOpQrStUvWxYzAbCdEfGhIjKlMnOp",
-      network: "TRC20",
-      balance: "750.25",
-      status: "inactive",
-      createdAt: "2024-04-05",
-      totalCollections: 25000.00,
-      transactionCount: 12,
-    },
-  ];
+  // Fetch USDT collections on component mount
+  useEffect(() => {
+    const fetchUsdtCollections = async () => {
+      try {
+        setLoading(true);
+        const response = await collectionsApi.getUsdtCollections();
+        // Map API response to our interface
+        const mappedWallets: UsdtWallet[] = response.collections.map((collection: any) => ({
+          id: collection.id || collection.reference || 'N/A',
+          address: collection.usdt_address || 'N/A',
+          network: collection.network || 'TRC20',
+          balance: collection.balance || 0,
+          status: collection.status || 'active',
+          created_at: collection.created_at || new Date().toISOString(),
+          total_collections: collection.total_collections || 0,
+          transaction_count: collection.transaction_count || 0,
+        }));
+        setUsdtWallets(mappedWallets);
+      } catch (err) {
+        console.error("Failed to fetch USDT collections:", err);
+        setError(err instanceof Error ? err.message : "Failed to load USDT collections");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsdtCollections();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -71,11 +72,11 @@ export default function StaticUSDTPage() {
     alert("Address copied to clipboard!");
   };
 
-  const totalActiveWallets = staticUSDTWallets.filter(wallet => wallet.status === "active").length;
-  const totalBalance = staticUSDTWallets
-    .filter(wallet => wallet.status === "active")
-    .reduce((sum, wallet) => sum + parseFloat(wallet.balance.replace(',', '')), 0);
-  const totalCollections = staticUSDTWallets.reduce((sum, wallet) => sum + wallet.totalCollections, 0);
+  const totalActiveWallets = usdtWallets.filter((wallet: UsdtWallet) => wallet.status === "active").length;
+  const totalBalance = usdtWallets
+    .filter((wallet: UsdtWallet) => wallet.status === "active")
+    .reduce((sum: number, wallet: UsdtWallet) => sum + wallet.balance, 0);
+  const totalCollections = usdtWallets.reduce((sum: number, wallet: UsdtWallet) => sum + wallet.total_collections, 0);
 
   return (
     <div>
@@ -127,7 +128,7 @@ export default function StaticUSDTPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {staticUSDTWallets.map((wallet) => (
+            {usdtWallets.map((wallet: UsdtWallet) => (
               <div
                 key={wallet.id}
                 className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50"
@@ -178,20 +179,20 @@ export default function StaticUSDTPage() {
                     <div className="text-center p-3 bg-white dark:bg-gray-700 rounded border">
                       <p className="text-xs text-gray-600 dark:text-gray-400">Transactions</p>
                       <p className="text-lg font-bold text-gray-900 dark:text-white">
-                        {wallet.transactionCount}
+                        {wallet.transaction_count}
                       </p>
                     </div>
                     <div className="text-center p-3 bg-white dark:bg-gray-700 rounded border">
                       <p className="text-xs text-gray-600 dark:text-gray-400">Total Collected</p>
                       <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                        {formatCurrency(wallet.totalCollections)}
+                        {formatCurrency(wallet.total_collections)}
                       </p>
                     </div>
                   </div>
 
                   {/* Created Date */}
                   <div className="text-xs text-gray-500 dark:text-gray-400">
-                    Created: {new Date(wallet.createdAt).toLocaleDateString()}
+                    Created: {new Date(wallet.created_at).toLocaleDateString()}
                   </div>
                 </div>
               </div>

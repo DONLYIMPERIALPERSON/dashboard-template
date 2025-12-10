@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { GridIcon, BoxCubeIcon } from "@/icons";
+import { dashboardApi, walletApi, collectionsApi } from "@/lib/api";
 
 interface Bank {
   id: number;
@@ -14,10 +15,21 @@ interface Bank {
   created_at: string;
 }
 
+interface PayoutTransaction {
+  id: string;
+  type: string;
+  amount: number;
+  recipient: string;
+  description: string;
+  status: string;
+  created_at: string;
+}
+
 export default function PayoutPage() {
   const [activeTab, setActiveTab] = useState("overview");
-
-  const availableBalance = 45000.00;
+  const [availableBalance, setAvailableBalance] = useState(0);
+  const [payoutTransactions, setPayoutTransactions] = useState<PayoutTransaction[]>([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
 
   const [transferForm, setTransferForm] = useState({
     bankCode: "",
@@ -33,8 +45,38 @@ export default function PayoutPage() {
   const [isValidating, setIsValidating] = useState(false);
   const [accountValidated, setAccountValidated] = useState(false);
 
-  // Fetch banks on component mount
+  // Fetch data on component mount
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch wallet balance
+        const walletData = await walletApi.getBalance();
+        setAvailableBalance(walletData.available_balance || 0);
+
+        // Fetch payout transactions
+        setLoadingTransactions(true);
+        // Use collections API to get recent transactions (this is a simplified approach)
+        // In a full implementation, you'd have a dedicated transactions API
+        const transactionsData = await collectionsApi.getTrxCollections({ page: 1, limit: 5 });
+        // Map to payout transaction format
+        const payouts: PayoutTransaction[] = transactionsData.collections.slice(0, 5).map((t: any) => ({
+          id: t.id || 'N/A',
+          type: 'debit',
+          amount: t.amount || 0,
+          recipient: t.customer_name || 'N/A',
+          description: t.description || 'Payout',
+          status: t.status || 'completed',
+          created_at: t.created_at || new Date().toISOString()
+        }));
+        setPayoutTransactions(payouts);
+
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoadingTransactions(false);
+      }
+    };
+
     const fetchBanks = async () => {
       setLoadingBanks(true);
       try {
@@ -52,6 +94,7 @@ export default function PayoutPage() {
       }
     };
 
+    fetchData();
     fetchBanks();
   }, []);
 

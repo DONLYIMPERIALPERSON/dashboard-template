@@ -6,65 +6,15 @@ import {
   TableRow,
 } from "../ui/table";
 import Badge from "../ui/badge/Badge";
+import { DashboardSummary } from "@/lib/api";
 
-// Define the TypeScript interface for recent transactions
-interface Transaction {
-  id: string;
-  type: "deposit" | "payout" | "collection";
-  amount: number;
-  fee?: number;
-  description: string;
-  status: "completed" | "pending" | "failed";
-  date: string;
+interface RecentOrdersProps {
+  dashboardData: DashboardSummary | null;
 }
 
-// Define the table data using the interface
-const transactionData: Transaction[] = [
-  {
-    id: "dep_12345",
-    type: "deposit",
-    amount: 125000,
-    description: "Virtual Account Deposit - ABC Corp",
-    status: "completed",
-    date: "2024-12-12 14:30",
-  },
-  {
-    id: "payout_67890",
-    type: "payout",
-    amount: 75000,
-    fee: 250,
-    description: "Transfer to John Doe - ****1234",
-    status: "completed",
-    date: "2024-12-12 13:15",
-  },
-  {
-    id: "dep_54321",
-    type: "deposit",
-    amount: 250000,
-    description: "USDT Deposit - Wallet Transfer",
-    status: "completed",
-    date: "2024-12-12 11:45",
-  },
-  {
-    id: "collection_98765",
-    type: "collection",
-    amount: 50000,
-    description: "Payment Collection - Invoice #INV001",
-    status: "pending",
-    date: "2024-12-12 10:20",
-  },
-  {
-    id: "payout_24680",
-    type: "payout",
-    amount: 100000,
-    fee: 350,
-    description: "Bulk Transfer - Multiple Recipients",
-    status: "completed",
-    date: "2024-12-12 09:10",
-  },
-];
-
-export default function RecentOrders() {
+export default function RecentOrders({ dashboardData }: RecentOrdersProps) {
+  // Prepare transaction data from API
+  const transactionData = dashboardData?.recent_transactions || [];
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-4 pb-3 pt-4 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6">
       <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -181,16 +131,13 @@ export default function RecentOrders() {
                       {transaction.description}
                     </p>
                     <span className="text-gray-500 text-theme-xs dark:text-gray-400">
-                      {transaction.date}
+                      {new Date(transaction.created_at).toLocaleString()}
                     </span>
                   </div>
                 </TableCell>
                 <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                   <div>
                     <p className="font-medium">₦{transaction.amount.toLocaleString()}</p>
-                    {transaction.fee && (
-                      <p className="text-xs text-red-500">Fee: ₦{transaction.fee}</p>
-                    )}
                   </div>
                 </TableCell>
                 <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">

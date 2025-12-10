@@ -1,16 +1,35 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DollarLineIcon, BoxCubeIcon, UserCircleIcon } from "@/icons";
+import { walletApi, WalletBalance, DepositRequest, DepositResponse } from "@/lib/api";
 
 export default function WalletPage() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [walletData, setWalletData] = useState<WalletBalance | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [depositAmount, setDepositAmount] = useState("");
+  const [depositMethod, setDepositMethod] = useState<'virtual_account' | 'usdt' | 'checkout_link'>('virtual_account');
+  const [isCreatingDeposit, setIsCreatingDeposit] = useState(false);
+  const [depositResponse, setDepositResponse] = useState<DepositResponse | null>(null);
 
-  const walletData = {
-    available: "150,000.00",
-    pending: "25,000.00",
-    locked: "10,000.00",
-    total: "185,000.00",
-  };
+  // Fetch wallet balance on component mount
+  useEffect(() => {
+    const fetchWalletBalance = async () => {
+      try {
+        setLoading(true);
+        const data = await walletApi.getBalance();
+        setWalletData(data);
+      } catch (err) {
+        console.error("Failed to fetch wallet balance:", err);
+        setError(err instanceof Error ? err.message : "Failed to load wallet data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWalletBalance();
+  }, []);
 
   const fundingMethods = [
     {
@@ -51,6 +70,30 @@ export default function WalletPage() {
     window.open(checkoutUrl, '_blank');
   };
 
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading wallet...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">⚠️ Error loading wallet</div>
+          <p className="text-gray-600 dark:text-gray-400">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6">
@@ -72,7 +115,7 @@ export default function WalletPage() {
           <h4 className="text-base font-medium text-gray-900 dark:text-white mb-4">
             Wallet Balance
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Available Balance */}
             <div className="p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg border border-green-200 dark:border-green-800">
               <div>
@@ -80,7 +123,7 @@ export default function WalletPage() {
                   Available Balance
                 </p>
                 <p className="text-2xl font-bold text-green-800 dark:text-green-200 mt-1">
-                  ₦{walletData.available}
+                  ₦{walletData ? walletData.available_balance.toLocaleString() : '0'}
                 </p>
               </div>
             </div>
@@ -92,19 +135,7 @@ export default function WalletPage() {
                   Pending Balance
                 </p>
                 <p className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mt-1">
-                  ₦{walletData.pending}
-                </p>
-              </div>
-            </div>
-
-            {/* Locked Balance */}
-            <div className="p-6 bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-lg border border-red-200 dark:border-red-800">
-              <div>
-                <p className="text-sm text-red-700 dark:text-red-300 font-medium">
-                  Locked Balance
-                </p>
-                <p className="text-2xl font-bold text-red-800 dark:text-red-200 mt-1">
-                  ₦{walletData.locked}
+                  ₦{walletData ? walletData.pending_balance.toLocaleString() : '0'}
                 </p>
               </div>
             </div>
@@ -116,7 +147,7 @@ export default function WalletPage() {
                   Total Balance
                 </p>
                 <p className="text-2xl font-bold text-blue-800 dark:text-blue-200 mt-1">
-                  ₦{walletData.total}
+                  ₦{walletData ? walletData.total_balance.toLocaleString() : '0'}
                 </p>
               </div>
             </div>
